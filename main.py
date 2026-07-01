@@ -13,9 +13,16 @@ dp = Dispatcher()
 async def cmd_start(message: Message):
     await message.answer(f'Hello! {message.from_user.first_name} I am your first bot')
 
+@dp.message(Command('help'))
+async def cmd_help(message: Message):
+    await message.answer(
+        '/start - greeting\n'
+        '/help - list of commands\n'
+        '/about - info about the bot'
+    )
 @dp.message(Command("about"))
 async def cmd_about(message: Message):
-    await message.answer(f"Available commands\n /start - greeting with the bot\n /about - the list of commands")
+    await message.answer(f"Created via Python(aiogram)\nMade by @zakir0vaa04")
 
 async def main():
     await dp.start_polling(bot)
