@@ -1,12 +1,15 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command
-
-from src.keyboards import keyboard_main, inline
-
+from aiogram.fsm.context import FSMContext
+from src.keyboards import keyboard_main, inline, restart_inline
+from aiogram.fsm.state import  State, StatesGroup
+from src.questions import QUESTIONS
 
 router = Router()
 
+class Quiz(StatesGroup):
+    waiting_answer = State()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
@@ -23,10 +26,37 @@ async def cmd_help(message: Message):
         reply_markup=inline
     )
 
-@router.callback_query(F.data == "learn_start")
-async def quiz_start(callback: CallbackQuery):
+
+@router.message(Command('game'))
+async def cmd_game(message: Message):
+    await message.answer("Choose one field", reply_markup=inline)
+
+@router.callback_query(F.data == "quiz_start")
+async def quiz_start(callback: CallbackQuery, state: FSMContext):
     await callback.answer('Are you ready?', show_alert=True)
-    await callback.message.answer("We are getting started!")
+    await state.update_data(index=0, score=0)
+    await state.set_state(Quiz.waiting_answer)      
+    await callback.message.answer(f"Question 1: {QUESTIONS[0]['q']}")
+
+@router.message(Quiz.waiting_answer)
+async def handle_answer(message: Message, state: FSMContext):
+    data = await state.get_data()
+    index = data["index"]
+    score = data["score"]
+
+    if message.text.lower() == QUESTIONS[index]['a']:
+        score += 1
+        await message.answer("Correct! +1")
+    else:
+        await message.answer(f"Incorrect! The right answer is: {QUESTIONS[index]['a']}")
+    
+    index += 1
+    if index >= len(QUESTIONS):
+        await message.answer(f"The end! Your score: {score}/{len(QUESTIONS)}", reply_markup=restart_inline)
+        await state.clear()
+    else:
+        await state.update_data(index=index, score=score)
+        await message.answer(f"Question {index+1}: {QUESTIONS[index]['q']}")
 
 @router.message(F.text == "Python")
 async def cmd_python(message: Message):

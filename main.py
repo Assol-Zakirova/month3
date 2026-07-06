@@ -5,10 +5,11 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart, Command
 from src.handlers import router
 import logging
+from aiogram.fsm.storage.memory import MemoryStorage
 
 BOT_TOKEN = BOT_TOKEN
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+dp = Dispatcher(storage=MemoryStorage())
 
 async def main(): 
     dp.include_router(router)
