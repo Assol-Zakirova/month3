@@ -92,29 +92,29 @@ async def cmd_game(message: Message):
 @router.callback_query(F.data == "quiz_start")
 async def quiz_start(callback: CallbackQuery, state: FSMContext):
     await callback.answer('Are you ready?', show_alert=True)
-    await state.update_data(index=0, score=0)
+    await state.update_data(index=1, score=0)
     await state.set_state(Quiz.waiting_answer)      
-    await callback.message.answer(f"Question 1: {QUESTIONS[0]['q']}")
+    await callback.message.answer(f"Question 1: {get_question_by_id(1).get('question_text')}")
 
 @router.message(Quiz.waiting_answer)
 async def handle_answer(message: Message, state: FSMContext):
     data = await state.get_data()
     index = data["index"]
     score = data["score"]
-
-    if message.text.lower() == QUESTIONS[index]['a']:
+    question = get_question_by_id(index)
+    if message.text.lower() == question.get('correct_answer'):
         score += 1
         await message.answer("Correct! +1")
     else:
-        await message.answer(f"Incorrect! The right answer is: {QUESTIONS[index]['a']}")
+        await message.answer(f"Incorrect! The right answer is: {get_question_by_id(index).get('correct_answer')}")
     
     index += 1
-    if index >= len(QUESTIONS):
-        await message.answer(f"The end! Your score: {score}/{len(QUESTIONS)}", reply_markup=restart_inline)
+    if index > len(get_all_questions()):
+        await message.answer(f"The end! Your score: {score}/{len(get_all_questions())}", reply_markup=restart_inline)
         await state.clear()
     else:
         await state.update_data(index=index, score=score)
-        await message.answer(f"Question {index+1}: {QUESTIONS[index]['q']}")
+        await message.answer(f"Question {index}: {get_question_by_id(index).get('question_text')}")
 
 @router.message(F.text == "Python")
 async def cmd_python(message: Message):
