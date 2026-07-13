@@ -1,10 +1,13 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart, Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from src.keyboards import keyboard_main, inline, restart_inline
 from aiogram.fsm.state import  State, StatesGroup
 from src.questions import QUESTIONS
+from db.users import get_user, create_user
+from db.results import get_score
+from db.questions import get_all_questions, add_question, delete_question, if_exists, get_question_by_id
 
 router = Router()
 
@@ -13,11 +16,66 @@ class Quiz(StatesGroup):
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
-    await message.answer(
-        f'Hello {message.from_user.first_name}! I am your first bot',
-        reply_markup=keyboard_main
-        )
+    user = create_user(
+        telegram_id=message.from_user.id,
+        username=message.from_user.username or "Anonymouse")
+    await message.answer(f'Hello {message.from_user.first_name}! I am your first bot', reply_markup=keyboard_main)
+
+@router.message(Command('list'))
+async def cmd_list(message: Message):
+    questions = get_all_questions()
+    if questions:
+        await message.answer ("\n".join([f'{i.get('id')}. {i.get('question_text')} - {i.get('correct_answer')}' for i in questions]))
+    else:
+        await message.answer("There are not any questions")
+
+@router.message(Command('add'))
+async def cmd_add(message: Message, command: CommandObject):
+    if not command.args:
+        await message.answer("Enter: /add question | answer\n" 
+        "Example: /add The capital of Spain? | madrid")
+        return
+    parts = command.args.split("|")
+    if len(parts) != 2:
+        await message.answer('You need to divide question and answer via |')
+        return
+    question_text = parts[0].strip().lower()
+    answer_text = parts[1].strip().lower()
+    if not if_exists(question_text):
+        await message.answer('This kind of question is already exists')
+        return
+    new_id = add_question(question_text, answer_text)
+    await message.answer(f"The question was added succsessfully its ID is {new_id.get("id")}")
+
+@router.message(Command("del"))
+async def cmd_del(message: Message, command: CommandObject):
+    if not command.args or not command.args.isdigit():
+        await message.answer("Enter: /del id\n"
+            "Example: /del 8")
+        return 
+    index = int(command.args.strip())
+    if not get_question_by_id(index):
+        await message.answer("There is no question with such ID")
+        return
+    delete_question(index)
+    await message.answer(f"The question with ID {index} was succsessfully deleted")
+
+
+@router.callback_query(F.data == "my_score")
+async def my_score(callback: CallbackQuery):
+    user = get_user(
+        telegram_id=callback.from_user.id)
+
+    if not user:
+        await callback.answer('User Not Found', show_alert=True)
+        return
     
+    data = get_score(
+        user_id=user["id"]
+    )
+    await callback.answer('')
+    await callback.message.answer(f'Your score: {data["correct"] or 0}/{data["total"] or 0}', show_alert=True)
+
 @router.message(Command('help'))
 async def cmd_help(message: Message):
     await message.answer(
