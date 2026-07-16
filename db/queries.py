@@ -51,6 +51,8 @@ GET_SCORE_BY_USER_ID = """
     SELECT COUNT(*) AS total, SUM(is_correct) AS correct FROM results WHERE user_id = ?
 """
 
+DELETE_RESULT = "DELETE FROM results WHERE user_id = ?"
+
 #--QUESTIONS-- 
 
 INSERT_QUESTION = "INSERT INTO questions(question_text, correct_answer) VALUES(?, ?) RETURNING id"
@@ -58,4 +60,13 @@ GET_QUESTION_BY_ID = "SELECT * FROM questions WHERE id = ?"
 QUESTION_EXISTS = "SELECT 1 FROM questions WHERE question_text = ?"
 GET_ALL_QUESTIONS = "SELECT * FROM questions"
 DELETE_QUESTION = 'DELETE FROM questions WHERE id = ?'
+
+RATING = """
+    SELECT username, SUM(is_correct) as total
+    FROM users 
+    INNER JOIN results
+    ON users.id = results.user_id
+    GROUP BY username 
+    ORDER BY total DESC;
+"""
 
